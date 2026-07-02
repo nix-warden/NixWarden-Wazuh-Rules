@@ -1,0 +1,1 @@
+# NixWarden-Wazuh-Rules
