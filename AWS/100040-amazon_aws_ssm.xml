@@ -1,0 +1,15 @@
+<!-- Custom rule by NixWarden -->
+<group name="amazon,aws,ssm,ssm_agent,">
+
+  <!-- ========================================== -->
+  <!-- Host-Level SSM Agent Logs (amazon-ssm-agent) -->
+  <!-- ========================================== -->
+
+  <!-- Parent Rule for SSM Agent Logs on Endpoint -->
+  <rule id="100040" level="3">
+    <decoded_as>amazon-ssm-agent</decoded_as>
+    <description>Amazon SSM Agent event</description>
+    <group>aws,ssm_agent,</group>
+  </rule>
+
+</group>
