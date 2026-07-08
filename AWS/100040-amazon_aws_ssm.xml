@@ -12,4 +12,12 @@
     <group>aws,ssm_agent,</group>
   </rule>
 
+  <!-- Agent Started -->
+  <rule id="100042" level="3">
+    <if_sid>100040</if_sid>
+    <field name="ssm_message">^Starting</field>
+    <description>Amazon SSM Agent component started</description>
+    <group>aws,ssm_agent,service_start,</group>
+  </rule>
+
 </group>
