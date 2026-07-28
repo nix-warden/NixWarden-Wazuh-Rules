@@ -20,4 +20,61 @@
     <group>aws,ssm_agent,service_start,</group>
   </rule>
 
+  <!-- Agent Stopped -->
+  <rule id="100043" level="5">
+    <if_sid>100040</if_sid>
+    <field name="ssm_message">Stopping</field>
+    <description>$(ssm_service) stopped</description>
+    <group>aws,ssm_agent,service_stop,</group>
+  </rule>
+
+  <!-- Agent Hibernation (Connectivity/Access errors) -->
+  <rule id="100044" level="7">
+    <if_sid>100040</if_sid>
+    <field name="ssm_message">Entering SSM Agent hibernate</field>
+    <description>$(ssm_service) entering hibernate mode (connection/permissions issue)</description>
+    <group>aws,ssm_agent,warning,</group>
+  </rule>
+
+  <!-- Access Denied / IAM Permission Issues -->
+  <rule id="100045" level="8">
+    <if_sid>100040</if_sid>
+    <field name="ssm_message">AccessDeniedException|is not authorized to perform</field>
+    <description>$(ssm_service) authentication/authorization failure: IAM permissions missing</description>
+    <group>
+      aws,ssm_agent,invalid_request,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_4.12,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+  </rule>
+
+  <!-- Document/Command Execution started -->
+  <rule id="100046" level="5">
+    <if_sid>100040</if_sid>
+    <field name="ssm_message" type="pcre2">Running document:|Processing document|Parsing
+      AgentMessage.*sendCommand</field>
+    <description>$(ssm_service) executing command/document</description>
+    <group>aws,ssm_agent,command_execution,</group>
+    <mitre>
+      <id>T1059</id>
+    </mitre>
+  </rule>
+
+  <!-- Document Execution Failed -->
+  <rule id="100047" level="7">
+    <if_sid>100040</if_sid>
+    <field name="ssm_message" type="pcre2">Document execution failed|failed to run document|failed
+      to run command</field>
+    <description>$(ssm_service) command/document execution failed</description>
+    <group>aws,ssm_agent,error,</group>
+  </rule>
+
+  <!-- General Agent Warnings based on log level -->
+  <rule id="100048" level="4">
+    <if_sid>100040</if_sid>
+    <field name="ssm_level">^WARN$</field>
+    <description>Amazon SSM Agent warning: $(ssm_message)</description>
+    <group>aws,ssm_agent,warning,</group>
+  </rule>
+
 </group>

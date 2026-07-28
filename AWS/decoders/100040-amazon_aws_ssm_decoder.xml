@@ -1,12 +1,18 @@
 <!-- Custom decoder for Amazon SSM Agent logs -->
-<!-- Log format: YYYY-MM-DD HH:MM:SS LEVEL [component] message -->
+<!-- Log format: YYYY-MM-DD HH:MM:SS LEVEL [service] message -->
 <decoder name="amazon-ssm-agent">
   <prematch type="pcre2">^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?\s+(?:INFO|WARN|ERROR|DEBUG|FATAL|Trace)</prematch>
 </decoder>
 
-<decoder name="amazon-ssm-agent-fields">
+<decoder name="amazon-ssm-agent-with-service">
   <parent>amazon-ssm-agent</parent>
-  <use_own_name>true</use_own_name>
-  <regex type="pcre2">^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?)\s+(\S+)\s+(?:\[([^\]]+)\]\s+)?(.*)</regex>
-  <order>ssm_timestamp, ssm_level, ssm_component, ssm_message</order>
+  <prematch type="pcre2">^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?\s+\S+\s+\[</prematch>
+  <regex type="pcre2">^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?)\s+(\S+)\s+\[([^\]]+)\]\s+(.*)</regex>
+  <order>ssm_timestamp, ssm_level, ssm_service, ssm_message</order>
+</decoder>
+
+<decoder name="amazon-ssm-agent-no-service">
+  <parent>amazon-ssm-agent</parent>
+  <regex type="pcre2">^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:\.\d+)?)\s+(\S+)\s+(.*)</regex>
+  <order>ssm_timestamp, ssm_level, ssm_message</order>
 </decoder>
