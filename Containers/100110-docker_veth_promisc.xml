@@ -1,0 +1,32 @@
+<!-- 
+  NixWarden - Wazuh Ruleset
+  Category: Containers & CI/CD (Docker, containerd, Jenkins, Kubernetes)
+  MITRE ATT&CK: T1040 (Network Sniffing - False Positive Tuning)
+  
+  Description:
+  Container runtimes dynamically create virtual ethernet pairs (veth*) and attach them 
+  to bridges (docker0, br-*, cni0). This causes Linux kernel / auditd to log transitions 
+  into and out of promiscuous mode, triggering Wazuh default rules 5104 and 80710.
+  
+  Operational Note:
+  Level 2 keeps this event below the default Wazuh alert threshold (level 3), 
+  preventing alert spam in SOC dashboards while preserving the logs in archives.json 
+  for container lifecycle auditing.
+  
+  Rule ID Note:
+  Feel free to renumber this rule ID (e.g., into your organization's 200,000+ custom namespace) 
+  to prevent ID collisions in your Wazuh Manager.
+-->
+<group name="docker,container,noise_reduction,">
+
+  <rule id="100110" level="2">
+    <if_sid>5104, 80710</if_sid>
+    <match>veth</match>
+    <description>Ephemeral container interface (veth) promiscuous mode transition on Docker/CI node</description>
+    <mitre>
+      <id>T1040</id>
+    </mitre>
+    <group>promisc,false_positive,</group>
+  </rule>
+
+</group>

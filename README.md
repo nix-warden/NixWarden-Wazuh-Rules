@@ -13,7 +13,8 @@ To prevent `Wazuh-Manager` service failures due to duplicate Rule IDs, this repo
 - **0 - 99,999:** Reserved for standard, default Wazuh rules. **DO NOT USE.**
 - **100,000 - 199,999:** Reserved for **NixWarden-Wazuh-Rules** (custom & adapted detections).
     - **100,000 - 100,029:** Reserved for **local_rules.xml**
-    - **100,030 - 100,100** Reserved for **Custom AWS rules**
+    - **100,030 - 100,100:** Reserved for **Custom AWS rules**
+    - **100,101 - 100,150:** Reserved for **Containers & CI/CD rules** (Docker, Podman, Jenkins)
 - **200,000+:** Reserved for custom/local overrides and enterprise extensions.
 
 ### Out-of-the-Box Exceptions (> 100,000)
@@ -24,6 +25,13 @@ Wazuh includes several default rule ranges that exceed the standard `99,999` lim
 - **182,013 - 185,000:** Reserved for Wazuh Sysmon rules.
 - **184,665 - 184,777:** Reserved for Wazuh Sysmon rules.
 - **500,000 - 500,102:** Reserved for Wazuh Unbound rules.
+
+### ⚠️ Rule ID Customization & Collision Avoidance
+
+Wazuh strictly mandates unique Rule IDs across the entire manager instance. If duplicate IDs exist without an explicit `overwrite="yes"`, `wazuh-analysisd` will fail syntax verification (`wazuh-analysisd -t`) or crash during startup:
+
+- **Reassigning IDs:** You are free (and encouraged) to reassign rule IDs from this repository to any free range in your environment (such as `200,000+`) to match your organization's internal numbering schema and avoid conflicts with existing custom rules.
+- **Rule Overwriting:** If you want to intentionally override an existing rule rather than define a new one, use the `overwrite="yes"` attribute within the `<rule>` tag.
 
 _Before deploying, always check your `/var/ossec/etc/rules/` directory to ensure no local collisions exist._
 ## 🚀 Key Features
