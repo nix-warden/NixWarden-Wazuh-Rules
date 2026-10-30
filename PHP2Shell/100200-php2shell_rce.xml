@@ -121,11 +121,24 @@
     <group>kill_chain_exploitation,pci_dss_6.5.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.5,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <!-- Exploitation: PHP-FPM Worker SIGSEGV/SIGABRT or Kernel Segfault (CVE-2026-109619) -->
+  <!-- Exploitation: PHP-FPM Pool Worker Crash (Signal 11 SIGSEGV or Signal 6 SIGABRT) -->
   <rule id="100213" level="10">
-    <match>child exited on signal 11|child exited on signal 6|segfault at</match>
-    <regex type="pcre2">(?:\[pool \S+\] child \d+ exited on signal (?:11 \(SIGSEGV\)|6 \(SIGABRT\))|kernel:.*?\bphp(?:-fpm)?(?:\[\d+\])?: segfault at)</regex>
-    <description>PHP2Shell exploitation: PHP-FPM worker segfault or kernel crash (CVE-2026-109619 memory corruption)</description>
+    <match>child exited on signal 11|child exited on signal 6</match>
+    <regex type="pcre2">\[pool \S+\] child \d+ exited on signal (?:11 \(SIGSEGV\)|6 \(SIGABRT\))</regex>
+    <description>PHP2Shell exploitation: PHP-FPM worker crash (CVE-2026-109619 memory corruption)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1499.003</id>
+    </mitre>
+    <group>kill_chain_exploitation,pci_dss_6.5.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.5,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <!-- Exploitation: Linux Kernel Segfault of PHP / PHP-FPM Worker (Child of Stock Rule 1010) -->
+  <rule id="100215" level="10">
+    <if_sid>1010</if_sid>
+    <match>php</match>
+    <regex type="pcre2">\bphp(?:-fpm)?(?:[0-9.]*)?(?:\[\d+\])?: segfault at</regex>
+    <description>PHP2Shell exploitation: Linux kernel segfault in PHP process (CVE-2026-109619 memory corruption)</description>
     <mitre>
       <id>T1190</id>
       <id>T1499.003</id>
@@ -153,7 +166,6 @@
   <rule id="100207" level="14">
     <if_sid>100206</if_sid>
     <if_matched_group>kill_chain_exploitation</if_matched_group>
-    <timeframe>600</timeframe>
     <description>PHP2Shell confirmed compromise: Web shell created or modified following exploitation attempts</description>
     <mitre>
       <id>T1505.003</id>
@@ -185,7 +197,6 @@
   <rule id="100210" level="14">
     <if_sid>100209</if_sid>
     <if_matched_group>kill_chain_exploitation,kill_chain_installation</if_matched_group>
-    <timeframe>600</timeframe>
     <description>PHP2Shell confirmed C2: Reverse shell or network utility spawned following exploitation or webshell drop</description>
     <mitre>
       <id>T1071</id>
@@ -214,7 +225,6 @@
   <rule id="100212" level="14">
     <if_sid>100211</if_sid>
     <if_matched_group>kill_chain_exploitation,kill_chain_installation</if_matched_group>
-    <timeframe>600</timeframe>
     <description>PHP2Shell confirmed C2: HTTP 200 interaction with web shell following exploitation or file drop</description>
     <mitre>
       <id>T1505.003</id>
@@ -243,7 +253,6 @@
   <rule id="100208" level="14">
     <if_sid>100203</if_sid>
     <if_matched_group>kill_chain_exploitation,kill_chain_installation,kill_chain_c2</if_matched_group>
-    <timeframe>600</timeframe>
     <description>PHP2Shell confirmed compromise: Shell command spawned by web server user following exploit, webshell drop, or C2 channel</description>
     <mitre>
       <id>T1059.004</id>

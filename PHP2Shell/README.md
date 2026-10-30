@@ -66,15 +66,16 @@ All rules are assigned to the **NixWarden Web Application Security namespace (`1
 | `100214` | 5 | Access Log / Delivery | Web server 500/503 crash on PHP or API upload endpoint | `kill_chain_delivery` | T1190 |
 | `100204` | 8 | Error Log / Reconnaissance | Repeated delivery anomalies (3 events in 60s from same IP) | `kill_chain_reconnaissance` | T1595.002<br>T1190 |
 | `100202` | 12 | Error Log / Exploitation | High-frequency memory exhaustion (5 events in 120s). Active RCE exploit attempt. | `kill_chain_exploitation` | T1190<br>T1499.003 |
-| `100213` | 10 | Error / Syslog / Exploitation | PHP-FPM worker segfault/abort or kernel segfault crash (CVE-2026-109619) | `kill_chain_exploitation` | T1190<br>T1499.003 |
+| `100213` | 10 | Error / Syslog / Exploitation | PHP-FPM pool child crash on signal 11 (SIGSEGV) or signal 6 (SIGABRT) | `kill_chain_exploitation` | T1190<br>T1499.003 |
+| `100215` | 10 | Kernel / Syslog / Exploitation | Linux kernel segfault in PHP / PHP-FPM process (child of stock rule 1010) | `kill_chain_exploitation` | T1190<br>T1499.003 |
 | `100206` | 10 | FIM / Installation | Suspicious executable script created or modified in web/container directory | `kill_chain_installation` | T1505.003 |
-| `100207` | 14 | FIM / Chained Escalation | Web shell created or modified following active exploitation (`timeframe: 600s`) | `kill_chain_installation` | T1505.003<br>T1190 |
+| `100207` | 14 | FIM / Chained Escalation | Web shell created or modified following active exploitation | `kill_chain_installation` | T1505.003<br>T1190 |
 | `100209` | 12 | Auditd / Command & Control | Network communication or reverse shell tool spawned by web server user (`nc`, `socat`, `curl`) | `kill_chain_c2` | T1071<br>T1105<br>T1571 |
-| `100210` | 14 | Auditd / Chained Escalation | Reverse shell or network utility spawned following exploitation or webshell drop (`timeframe: 600s`) | `kill_chain_c2` | T1071<br>T1105<br>T1190<br>T1571 |
+| `100210` | 14 | Auditd / Chained Escalation | Reverse shell or network utility spawned following exploitation or webshell drop | `kill_chain_c2` | T1071<br>T1105<br>T1190<br>T1571 |
 | `100211` | 11 | Access Log / Command & Control | Direct HTTP 200 execution of PHP script located in upload or static directory | `kill_chain_c2` | T1505.003<br>T1071.001<br>T1190 |
-| `100212` | 14 | Access Log / Chained Escalation | HTTP 200 interaction with web shell following exploitation or file drop (`timeframe: 600s`) | `kill_chain_c2` | T1505.003<br>T1071.001<br>T1190 |
+| `100212` | 14 | Access Log / Chained Escalation | HTTP 200 interaction with web shell following exploitation or file drop | `kill_chain_c2` | T1505.003<br>T1071.001<br>T1190 |
 | `100203` | 10 | Auditd / Actions on Objectives | Command execution spawned under web server user (`www-data`/`apache`/`nginx`) | `kill_chain_actions_on_objectives` | T1059.004 |
-| `100208` | 14 | Auditd / Chained Escalation | Shell command spawned by web server user following exploitation, webshell drop, or C2 (`timeframe: 600s`) | `kill_chain_actions_on_objectives` | T1059.004<br>T1190 |
+| `100208` | 14 | Auditd / Chained Escalation | Shell command spawned by web server user following exploitation, webshell drop, or C2 | `kill_chain_actions_on_objectives` | T1059.004<br>T1190 |
 
 ---
 
@@ -214,11 +215,17 @@ type=SYSCALL msg=audit(1761849735.123:457): arch=c000003e syscall=59 success=yes
 ```
 * **Evaluation Chain:** `31100` (Web log) $\to$ `31108` (2xx/3xx simple request) $\to$ **`100211` (Level 11)**. If preceded by `100202`, `100213`, or `100206`, escalates to **`100212` (Level 14)**.
 
-### Test 9: PHP-FPM Worker Segfault Crash (CVE-2026-109619) (Rule 100213)
+### Test 9A: PHP-FPM Worker Pool Crash (Signal 11 / Signal 6) (Rule 100213)
 ```text
 Oct 30 18:22:15 webserver php-fpm[1234]: [pool www] child 5678 exited on signal 11 (SIGSEGV) after 12.345678 seconds from start
 ```
 * **Evaluation Chain:** **`100213` (Level 10)**. If followed by webshell upload (`100206`) or shell execution (`100203`), escalates to **Level 14**.
+
+### Test 9B: Linux Kernel Segfault in PHP Process (Rule 100215)
+```text
+Oct 30 18:22:15 webserver kernel: [ 4512.189012] php-fpm8.2[14208]: segfault at 7fff12345678 ip 00007f9876543210 sp 00007fff12345600 error 4 in php-fpm8.2[7f9876400000+3a0000]
+```
+* **Evaluation Chain:** `1010` (Stock: Process segfaulted) $\to$ **`100215` (Level 10: Linux kernel segfault in PHP process)**. Escalates to **Level 14** on subsequent drop or exec.
 
 ### Test 10: Clean URL / REST API FastCGI Crash (Rule 100205)
 ```text
