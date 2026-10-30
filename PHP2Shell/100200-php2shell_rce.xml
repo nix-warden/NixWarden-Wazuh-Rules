@@ -19,13 +19,12 @@
 
   Description:
   Hardened, multi-vector enterprise detection ruleset for PHP2Shell vulnerabilities.
-  Features native cross-platform inheritance from Wazuh's built-in PHP error gateway 
-  (Rule 31420), supporting Nginx (31301), Apache (30101), and standalone PHP-FPM (31405).
-  Includes precursor triage logging, staged attack correlation, access log 500 error 
-  correlation, Linux auditd process tracking, and FIM web shell detection.
+  Combines native rule inheritance (31420, 31122, 80792, 554/550), specific SID tracking, 
+  and functional group aggregation (php2shell_precursor, php2shell_exploit) for 
+  high-fidelity staged attack correlation and chained compromise escalation (Level 14).
 
   Reference & Attribution:
-  Based on the foundational research and baseline logic published by Wazuh:
+  Based on foundational research and baseline logic published by Wazuh:
   https://wazuh.com/blog/detecting-php2shell-remote-code-execution-with-wazuh/
 -->
 <group name="php2shell,web,appsec,attack,">
@@ -44,7 +43,7 @@
       <id>T1190</id>
       <id>T1499.003</id>
     </mitre>
-    <group>web,appsec,attack,kill_chain_delivery,kill_chain_exploitation,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.5,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>php2shell_precursor,kill_chain_delivery,kill_chain_exploitation,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.5,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- Precursor: PHP Maximum Execution Time Exceeded (Triage Level) -->
@@ -56,31 +55,7 @@
     <mitre>
       <id>T1190</id>
     </mitre>
-    <group>web,appsec,attack,kill_chain_delivery,kill_chain_exploitation,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-  </rule>
-
-  <!-- Early Warning: Repeated Memory Exhaustion Probing (3 events in 60s) -->
-  <rule id="100204" level="8" frequency="3" timeframe="60">
-    <if_matched_sid>100200</if_matched_sid>
-    <same_source_ip />
-    <description>PHP2Shell probing: Repeated PHP memory exhaustion errors from same IP</description>
-    <mitre>
-      <id>T1595.002</id>
-      <id>T1190</id>
-    </mitre>
-    <group>web,appsec,attack,kill_chain_reconnaissance,kill_chain_delivery,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
-  </rule>
-
-  <!-- Attack Correlation: High-Frequency Memory Exhaustion (5 events in 120s) -->
-  <rule id="100202" level="12" frequency="5" timeframe="120">
-    <if_matched_sid>100200</if_matched_sid>
-    <same_source_ip />
-    <description>PHP2Shell: High-frequency PHP memory exhaustion. Active RCE exploitation attempt</description>
-    <mitre>
-      <id>T1190</id>
-      <id>T1499.003</id>
-    </mitre>
-    <group>web,appsec,attack,kill_chain_exploitation,pci_dss_6.5.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.5,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>php2shell_precursor,kill_chain_delivery,kill_chain_exploitation,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- =================================================================== -->
@@ -95,14 +70,42 @@
     <mitre>
       <id>T1190</id>
     </mitre>
-    <group>web,accesslog,system_error,kill_chain_exploitation,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>php2shell_precursor,system_error,kill_chain_exploitation,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <!-- =================================================================== -->
+  <!-- Staged Correlation & Attack Escalation                              -->
+  <!-- =================================================================== -->
+
+  <!-- Early Warning: Repeated Memory Pressure Probing (3 precursor events in 60s) -->
+  <rule id="100204" level="8" frequency="3" timeframe="60">
+    <if_matched_group>php2shell_precursor</if_matched_group>
+    <same_source_ip />
+    <description>PHP2Shell probing: Repeated memory pressure anomalies from same IP</description>
+    <mitre>
+      <id>T1595.002</id>
+      <id>T1190</id>
+    </mitre>
+    <group>kill_chain_reconnaissance,kill_chain_delivery,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <!-- Attack Correlation: High-Frequency Memory Exhaustion (5 events in 120s) -->
+  <rule id="100202" level="12" frequency="5" timeframe="120">
+    <if_matched_sid>100200</if_matched_sid>
+    <same_source_ip />
+    <description>PHP2Shell: High-frequency PHP memory exhaustion. Active RCE exploitation attempt</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1499.003</id>
+    </mitre>
+    <group>php2shell_exploit,kill_chain_exploitation,pci_dss_6.5.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.5,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- =================================================================== -->
   <!-- Vector 3: Host Telemetry - Linux Auditd Command Execution           -->
   <!-- =================================================================== -->
 
-  <!-- Post-Exploitation: Command/Shell Spawned by Web Server Service User -->
+  <!-- Standalone: Command/Shell Spawned by Web Server Service User -->
   <rule id="100203" level="10">
     <if_sid>80792</if_sid>
     <field name="audit.euid">^(?:33|48|82|www-data|apache|nginx|nobody)\z</field>
@@ -113,17 +116,41 @@
     <group>audit,post_exploitation,rce,kill_chain_actions_on_objectives,pci_dss_10.2.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
+  <!-- Chained Escalation: Command execution following PHP2Shell exploitation -->
+  <rule id="100208" level="14">
+    <if_sid>100203</if_sid>
+    <if_matched_group>php2shell_precursor, php2shell_exploit</if_matched_group>
+    <description>PHP2Shell confirmed RCE: Shell command spawned by web server user following exploitation attempts</description>
+    <mitre>
+      <id>T1059.004</id>
+      <id>T1190</id>
+    </mitre>
+    <group>audit,post_exploitation,rce,kill_chain_actions_on_objectives,pci_dss_10.2.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
   <!-- =================================================================== -->
   <!-- Vector 4: File Integrity Monitoring (FIM / Syscheck)                -->
   <!-- =================================================================== -->
 
-  <!-- Post-Exploitation: New Executable Script Dropped or Modified in Web Root -->
+  <!-- Standalone: New Executable Script Dropped or Modified in Web Root -->
   <rule id="100206" level="10">
     <if_sid>554, 550</if_sid>
     <field name="file" type="pcre2">^/var/www/.*?\.(?:php|phtml|phar|so)\z</field>
     <description>PHP2Shell post-exploitation: Suspicious executable script created or modified in web directory</description>
     <mitre>
       <id>T1505.003</id>
+    </mitre>
+    <group>syscheck,post_exploitation,webshell,kill_chain_installation,pci_dss_11.5,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.c.1,nist_800_53_SI.4,nist_800_53_SI.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <!-- Chained Escalation: Web shell created/modified following PHP2Shell exploitation -->
+  <rule id="100207" level="14">
+    <if_sid>100206</if_sid>
+    <if_matched_group>php2shell_precursor, php2shell_exploit</if_matched_group>
+    <description>PHP2Shell confirmed compromise: Web shell created or modified in web directory following exploitation attempts</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1190</id>
     </mitre>
     <group>syscheck,post_exploitation,webshell,kill_chain_installation,pci_dss_11.5,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.c.1,nist_800_53_SI.4,nist_800_53_SI.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
