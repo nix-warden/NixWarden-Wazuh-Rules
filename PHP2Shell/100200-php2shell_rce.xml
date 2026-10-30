@@ -66,12 +66,23 @@
     <group>kill_chain_delivery,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <!-- Delivery: Web Server Backend Crash on PHP Endpoints (500/502/503/504) -->
+  <!-- Delivery: Web Server FastCGI Backend Death or Timeout (502/504) -->
   <rule id="100205" level="5">
     <if_sid>31120</if_sid>
-    <id>^500$|^502$|^503$|^504$</id>
-    <url type="pcre2">\.php(?:$|\?)</url>
-    <description>PHP2Shell delivery: Web server backend crash on PHP endpoint (500/502/503/504)</description>
+    <id>^502$|^504$</id>
+    <description>PHP2Shell delivery: Web server FastCGI backend death or timeout (502/504)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>system_error,kill_chain_delivery,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <!-- Delivery: Web Server 500/503 Crash on PHP or API Upload Route -->
+  <rule id="100214" level="5">
+    <if_sid>31120</if_sid>
+    <id>^500$|^503$</id>
+    <url type="pcre2">(?:\.(?:php[0-9]?|phtml)\b|/(?:api|wp-json|graphql|rest|upload|media)/)\b</url>
+    <description>PHP2Shell delivery: Web server 500/503 crash on PHP or API upload endpoint</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -110,11 +121,11 @@
     <group>kill_chain_exploitation,pci_dss_6.5.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.5,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <!-- Exploitation: PHP-FPM Worker SIGSEGV / SIGABRT Crash (CVE-2026-109619) -->
+  <!-- Exploitation: PHP-FPM Worker SIGSEGV/SIGABRT or Kernel Segfault (CVE-2026-109619) -->
   <rule id="100213" level="10">
-    <match>child exited on signal 11 (SIGSEGV)|child exited on signal 6 (SIGABRT)</match>
-    <regex type="pcre2">\[pool \S+\] child \d+ exited on signal (?:11 \(SIGSEGV\)|6 \(SIGABRT\))</regex>
-    <description>PHP2Shell exploitation: PHP-FPM worker segfault or abort (CVE-2026-109619 memory corruption)</description>
+    <match>child exited on signal 11|child exited on signal 6|segfault at</match>
+    <regex type="pcre2">(?:\[pool \S+\] child \d+ exited on signal (?:11 \(SIGSEGV\)|6 \(SIGABRT\))|kernel:.*?\bphp(?:-fpm)?(?:\[\d+\])?: segfault at)</regex>
+    <description>PHP2Shell exploitation: PHP-FPM worker segfault or kernel crash (CVE-2026-109619 memory corruption)</description>
     <mitre>
       <id>T1190</id>
       <id>T1499.003</id>
@@ -130,7 +141,7 @@
   <!-- Standalone: New Executable Script Dropped or Modified in Web Root -->
   <rule id="100206" level="10">
     <if_sid>554, 550</if_sid>
-    <field name="file" type="pcre2">(?:^/(?:var/www|usr/share/nginx/html|srv/www|srv/http|tmp|dev/shm)/.*?\.(?:php[0-9]?|phtml|phar|so|inc))\z</field>
+    <field name="file" type="pcre2">/(?:var/www|usr/share/nginx/html|srv/www|srv/http|tmp|dev/shm)/.*?\.(?:php[0-9]?|phtml|phar|so|inc)\z</field>
     <description>PHP2Shell post-exploitation: Suspicious executable script created or modified in web directory</description>
     <mitre>
       <id>T1505.003</id>

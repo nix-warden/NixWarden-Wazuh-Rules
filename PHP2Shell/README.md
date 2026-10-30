@@ -62,11 +62,12 @@ All rules are assigned to the **NixWarden Web Application Security namespace (`1
 |---|---|---|---|---|---|
 | `100200` | 5 | Error Log / Delivery | Single PHP memory exhaustion fatal error (`Allowed memory size...`) | `kill_chain_delivery` | T1190<br>T1499.003 |
 | `100201` | 5 | Error Log / Delivery | Single PHP execution timeout fatal error (`Maximum execution time...`) | `kill_chain_delivery` | T1190 |
-| `100205` | 5 | Access Log / Delivery | Web server backend crash (500/502/503/504) on `.php` endpoint | `kill_chain_delivery` | T1190 |
+| `100205` | 5 | Access Log / Delivery | FastCGI gateway death or timeout (502/504) on any endpoint | `kill_chain_delivery` | T1190 |
+| `100214` | 5 | Access Log / Delivery | Web server 500/503 crash on PHP or API upload endpoint | `kill_chain_delivery` | T1190 |
 | `100204` | 8 | Error Log / Reconnaissance | Repeated delivery anomalies (3 events in 60s from same IP) | `kill_chain_reconnaissance` | T1595.002<br>T1190 |
 | `100202` | 12 | Error Log / Exploitation | High-frequency memory exhaustion (5 events in 120s). Active RCE exploit attempt. | `kill_chain_exploitation` | T1190<br>T1499.003 |
-| `100213` | 10 | Error Log / Exploitation | PHP-FPM worker segmentation fault or abort (CVE-2026-109619) | `kill_chain_exploitation` | T1190<br>T1499.003 |
-| `100206` | 10 | FIM / Installation | Suspicious executable script created or modified in web directory | `kill_chain_installation` | T1505.003 |
+| `100213` | 10 | Error / Syslog / Exploitation | PHP-FPM worker segfault/abort or kernel segfault crash (CVE-2026-109619) | `kill_chain_exploitation` | T1190<br>T1499.003 |
+| `100206` | 10 | FIM / Installation | Suspicious executable script created or modified in web/container directory | `kill_chain_installation` | T1505.003 |
 | `100207` | 14 | FIM / Chained Escalation | Web shell created or modified following active exploitation (`timeframe: 600s`) | `kill_chain_installation` | T1505.003<br>T1190 |
 | `100209` | 12 | Auditd / Command & Control | Network communication or reverse shell tool spawned by web server user (`nc`, `socat`, `curl`) | `kill_chain_c2` | T1071<br>T1105<br>T1571 |
 | `100210` | 14 | Auditd / Chained Escalation | Reverse shell or network utility spawned following exploitation or webshell drop (`timeframe: 600s`) | `kill_chain_c2` | T1071<br>T1105<br>T1190<br>T1571 |
@@ -219,6 +220,12 @@ Oct 30 18:22:15 webserver php-fpm[1234]: [pool www] child 5678 exited on signal 
 ```
 * **Evaluation Chain:** **`100213` (Level 10)**. If followed by webshell upload (`100206`) or shell execution (`100203`), escalates to **Level 14**.
 
+### Test 10: Clean URL / REST API FastCGI Crash (Rule 100205)
+```text
+198.51.100.25 - - [30/Oct/2026:18:22:15 +0000] "POST /api/v1/attachments/upload HTTP/1.1" 502 0 "-" "curl/7.88.1"
+```
+* **Evaluation Chain:** `31100` (Web log) $\to$ `31120` (5xx Server error) $\to$ **`100205` (Level 5)**.
+
 ---
 
 ## ⚙️ False Positive Tuning (Auditd Exclusions)
@@ -240,6 +247,31 @@ If your web application legitimately invokes system utilities (e.g. ImageMagick 
 > Because chained escalation rule `100208` requires prior exploitation (`kill_chain_exploitation`), routine background execution of these helper binaries during normal business traffic will never trigger high-severity compromise alerts.
 
 ---
+
+## 🐳 Containers, Kubernetes & User Namespaces
+
+When deploying NixWarden rules across containerized environments (Docker, Podman, Kubernetes):
+
+1. **Host-Based vs. Sidecar Agents:**
+   - **Inside Container / Sidecar:** Log paths and UIDs match standard Linux conventions (`/var/www/html`, EUID `33` or `82`).
+   - **Host-Based / Kubernetes Node:** The host kernel executes Auditd and FIM. Web roots will reside inside container storage driver overlays (e.g. `/var/lib/docker/overlay2/.../var/www/...` or `/run/containerd/...`). Rule `100206` is specifically engineered without strict prefix anchors to match both native host and container overlay paths seamlessly.
+2. **User Namespace Remapping (UID Subordinate Ranges):**
+   - If Docker or containerd has User Namespaces enabled (`userns-remap`), the container's `www-data` (UID `33`) is remapped to a subordinate UID on the host (e.g. `100033`).
+   - In such environments, adjust `auditd.rules` on the host to match your cluster's remapped UID range, or deploy the Wazuh agent directly into the container/pod namespace.
+3. **CRI Log Prefix Handling (Kubernetes Pod Logs):**
+   - Kubernetes container logs at `/var/log/pods/*/*/*.log` prepend CRI log headers (`<timestamp> <stream> <flag>`). Configure log collectors with `<log_format>syslog</log_format>` or container-aware decoders to forward unwrapped payloads to `analysisd`.
+
+---
+
+## 🏢 Multi-Tenant & Shared Hosting Environments
+
+In multi-tenant hosting environments (cPanel, Plesk, CloudLinux):
+- PHP-FPM pools run under individual customer accounts (UID >= 1000) rather than a single `www-data` or `apache` user.
+- To monitor all customer pools with Linux Auditd, configure audit rules to target the web server execution group or UID floor:
+  ```bash
+  # Monitor all non-system user executions spawned by FastCGI workers
+  -a always,exit -F arch=b64 -S execve -F euid>=1000 -k audit-wazuh-c
+  ```
 
 ## 🛠️ Remediation & Mitigation
 
