@@ -59,7 +59,7 @@ All rules are assigned to the **NixWarden Web Application Security namespace (`1
 | `100202` | 12 | Error Log / Correlation | High-frequency memory exhaustion (5 events in 120s). Active RCE exploit attempt. | `kill_chain_exploitation` | T1190<br>T1499.003 |
 | `100205` | 5 | Access Log / Correlation | HTTP 500 Internal Error on `.php` endpoint (potential engine crash) | `kill_chain_exploitation` | T1190 |
 | `100203` | 10 | Auditd / Post-Exploit | Command execution spawned under web server user (`www-data`/`apache`/`nginx`) | `kill_chain_actions_on_objectives` | T1059.004 |
-| `100206` | 10 | FIM / Post-Exploit | New executable script (`.php`, `.phtml`, `.so`) created in web root | `kill_chain_installation` | T1505.003 |
+| `100206` | 10 | FIM / Post-Exploit | Suspicious executable script created or modified in web directory | `kill_chain_installation` | T1505.003 |
 
 ---
 
@@ -166,7 +166,7 @@ type=SYSCALL msg=audit(1761849735.123:456): arch=c000003e syscall=59 success=yes
 ```text
 File '/var/www/html/shell.php' added to the system. Mode: file. Size: 1234 bytes.
 ```
-* **Evaluation Chain:** `554` (FIM file added) $\to$ **`100206` (Level 10)**.
+* **Evaluation Chain:** `554, 550` (FIM file added/modified) $\to$ **`100206` (Level 10)**.
 
 ---
 

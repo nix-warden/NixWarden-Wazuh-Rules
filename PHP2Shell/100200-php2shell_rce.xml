@@ -44,7 +44,7 @@
       <id>T1190</id>
       <id>T1499.003</id>
     </mitre>
-    <group>web,appsec,attack,kill_chain_delivery,kill_chain_exploitation,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>web,appsec,attack,kill_chain_delivery,kill_chain_exploitation,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.5,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- Precursor: PHP Maximum Execution Time Exceeded (Triage Level) -->
@@ -56,7 +56,7 @@
     <mitre>
       <id>T1190</id>
     </mitre>
-    <group>web,appsec,attack,kill_chain_delivery,kill_chain_exploitation,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>web,appsec,attack,kill_chain_delivery,kill_chain_exploitation,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- Early Warning: Repeated Memory Exhaustion Probing (3 events in 60s) -->
@@ -68,7 +68,7 @@
       <id>T1595.002</id>
       <id>T1190</id>
     </mitre>
-    <group>web,appsec,attack,kill_chain_reconnaissance,kill_chain_delivery,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>web,appsec,attack,kill_chain_reconnaissance,kill_chain_delivery,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- Attack Correlation: High-Frequency Memory Exhaustion (5 events in 120s) -->
@@ -80,7 +80,7 @@
       <id>T1190</id>
       <id>T1499.003</id>
     </mitre>
-    <group>web,appsec,attack,kill_chain_exploitation,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>web,appsec,attack,kill_chain_exploitation,pci_dss_6.5.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.5,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- =================================================================== -->
@@ -95,7 +95,7 @@
     <mitre>
       <id>T1190</id>
     </mitre>
-    <group>web,accesslog,system_error,kill_chain_exploitation,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>web,accesslog,system_error,kill_chain_exploitation,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- =================================================================== -->
@@ -110,23 +110,22 @@
     <mitre>
       <id>T1059.004</id>
     </mitre>
-    <group>audit,post_exploitation,rce,kill_chain_actions_on_objectives,pci_dss_10.2.2,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>audit,post_exploitation,rce,kill_chain_actions_on_objectives,pci_dss_10.2.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- =================================================================== -->
   <!-- Vector 4: File Integrity Monitoring (FIM / Syscheck)                -->
   <!-- =================================================================== -->
 
-  <!-- Post-Exploitation: New Executable Script Dropped in Web Root        -->
+  <!-- Post-Exploitation: New Executable Script Dropped or Modified in Web Root -->
   <rule id="100206" level="10">
-    <if_sid>554</if_sid>
-    <match>/var/www</match>
-    <regex type="pcre2">\.(?:php|phtml|phar|so)\z</regex>
-    <description>PHP2Shell post-exploitation: Suspicious executable script created in web directory</description>
+    <if_sid>554, 550</if_sid>
+    <field name="file" type="pcre2">^/var/www/.*?\.(?:php|phtml|phar|so)\z</field>
+    <description>PHP2Shell post-exploitation: Suspicious executable script created or modified in web directory</description>
     <mitre>
       <id>T1505.003</id>
     </mitre>
-    <group>syscheck,post_exploitation,webshell,kill_chain_installation,pci_dss_11.5,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,nist_800_53_SI.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <group>syscheck,post_exploitation,webshell,kill_chain_installation,pci_dss_11.5,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.c.1,nist_800_53_SI.4,nist_800_53_SI.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
 </group>
