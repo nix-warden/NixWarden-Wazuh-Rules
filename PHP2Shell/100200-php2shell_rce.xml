@@ -154,7 +154,7 @@
   <!-- Standalone: New Executable Script Dropped or Modified in Web Root -->
   <rule id="100206" level="10">
     <if_sid>554, 550</if_sid>
-    <field name="file" type="pcre2">/(?:var/www|usr/share/nginx/html|srv/www|srv/http|tmp|dev/shm)/.*?\.(?:php[0-9]?|phtml|phar|so|inc)\z</field>
+    <field name="file" type="pcre2">/(?:var/www|usr/share/nginx/html|srv/www|srv/http|tmp|dev/shm)/.*?\.(?:php[0-9]?|phtml|phar|so|inc)$</field>
     <description>PHP2Shell post-exploitation: Suspicious executable script created or modified in web directory</description>
     <mitre>
       <id>T1505.003</id>
@@ -182,8 +182,8 @@
   <!-- Standalone: Outbound Network/C2 Utility Spawned by Web Server User -->
   <rule id="100209" level="12">
     <if_sid>80792</if_sid>
-    <field name="audit.euid">^(?:33|48|82|www-data|apache|nginx|nobody)\z</field>
-    <field name="audit.exe" type="pcre2">/(?:nc|netcat|ncat|socat|curl|wget|telnet|chisel)\z</field>
+    <field name="audit.euid" type="pcre2">^(?:33|48|82|www-data|apache|nginx|nobody)$</field>
+    <field name="audit.exe" type="pcre2">/(?:nc|netcat|ncat|socat|curl|wget|telnet|chisel)$</field>
     <description>PHP2Shell C2: Network communication or reverse shell tool spawned by web server user</description>
     <mitre>
       <id>T1071</id>
@@ -241,7 +241,7 @@
   <!-- Standalone: Command/Shell Spawned by Web Server Service User -->
   <rule id="100203" level="10">
     <if_sid>80792</if_sid>
-    <field name="audit.euid">^(?:33|48|82|www-data|apache|nginx|nobody)\z</field>
+    <field name="audit.euid" type="pcre2">^(?:33|48|82|www-data|apache|nginx|nobody)$</field>
     <description>PHP2Shell post-exploitation: Shell command executed by web server user</description>
     <mitre>
       <id>T1059.004</id>
