@@ -1,0 +1,18 @@
+# 
+# NixWarden - Linux Auditd Rules for PHP2Shell Detection
+# Destination: /etc/audit/rules.d/wazuh-php2shell.rules
+#
+# Monitors process execution (execve) by web server users:
+#   - euid 33 (www-data on Debian/Ubuntu)
+#   - euid 48 (apache on RHEL/CentOS/Rocky)
+#
+# Tag: audit-wazuh-c (mapped to command execution in Wazuh rules)
+#
+
+# Debian / Ubuntu (www-data UID 33)
+-a always,exit -F arch=b64 -S execve -F euid=33 -k audit-wazuh-c
+-a always,exit -F arch=b32 -S execve -F euid=33 -k audit-wazuh-c
+
+# RHEL / CentOS / Rocky (apache UID 48)
+-a always,exit -F arch=b64 -S execve -F euid=48 -k audit-wazuh-c
+-a always,exit -F arch=b32 -S execve -F euid=48 -k audit-wazuh-c

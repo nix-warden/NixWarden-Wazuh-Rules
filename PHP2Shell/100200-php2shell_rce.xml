@@ -1,0 +1,69 @@
+<!-- 
+  NixWarden - Wazuh Ruleset
+  Category: Web Application Security / CVE & Exploit Detections
+  Vulnerability: PHP2Shell (CVE-2026-109618, CVE-2026-109619)
+  MITRE ATT&CK: 
+    - T1190 (Exploit Public-Facing Application)
+    - T1499.003 (Endpoint Denial of Service: OS Exhaustion Flood)
+    - T1059.004 (Command and Scripting Interpreter: Unix Shell)
+  
+  Description:
+  PHP2Shell represents critical unauthenticated remote code execution (RCE) flaws 
+  in core PHP runtime memory management. Attackers exploit out-of-memory (OOM) 
+  error handling via longjmp() and stale global states by issuing crafted multipart 
+  requests to exhaust PHP's memory_limit. This rule set detects precursor memory 
+  exhaustion events, correlation of repeated probing from the same source IP, 
+  and potential post-exploitation child process execution under web server user contexts.
+
+  Reference:
+  https://wazuh.com/blog/detecting-php2shell-remote-code-execution-with-wazuh/
+-->
+<group name="php2shell,apache,web,appsec,attack,">
+
+  <!-- Precursor: Single PHP Memory Exhaustion Fatal Error -->
+  <rule id="100200" level="7">
+    <if_sid>30301</if_sid>
+    <regex type="pcre2">PHP Fatal error:\s+Allowed memory size of \d+ bytes exhausted</regex>
+    <description>PHP2Shell precursor: PHP memory exhaustion fatal error for a request from $(srcip)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1499.003</id>
+    </mitre>
+    <group>web,appsec,attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!-- Precursor: PHP Maximum Execution Time Exceeded -->
+  <rule id="100201" level="7">
+    <if_sid>30301</if_sid>
+    <regex type="pcre2">PHP Fatal error:\s+Maximum execution time of \d+ seconds? exceeded</regex>
+    <description>PHP2Shell precursor: PHP maximum execution time exceeded for a request from $(srcip)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>web,appsec,attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!-- Attack Correlation: Repeated PHP Memory Exhaustion from Same Source IP -->
+  <rule id="100202" level="12" frequency="5" timeframe="120">
+    <if_matched_sid>100200</if_matched_sid>
+    <same_source_ip />
+    <description>PHP2Shell: Multiple PHP memory exhaustion errors for requests from $(srcip). Potential RCE exploitation attempt (CVE-2026-109618/CVE-2026-109619)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1499.003</id>
+    </mitre>
+    <group>web,appsec,attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <!-- Post-Exploitation: Command Execution Spawned by Web Server User via Auditd -->
+  <rule id="100203" level="10">
+    <if_sid>80792</if_sid>
+    <field name="audit.euid">^33$|^48$|^www-data$|^apache$|^nginx$</field>
+    <description>PHP2Shell post-exploitation: Shell command executed by web server user ($(audit.euid)): $(audit.command)</description>
+    <mitre>
+      <id>T1059.004</id>
+    </mitre>
+    <group>audit,post_exploitation,rce,pci_dss_10.2.2,</group>
+  </rule>
+
+</group>

@@ -15,6 +15,7 @@ To prevent `Wazuh-Manager` service failures due to duplicate Rule IDs, this repo
     - **100,000 - 100,029:** Reserved for **local_rules.xml**
     - **100,030 - 100,100:** Reserved for **Custom AWS rules**
     - **100,101 - 100,150:** Reserved for **Containers & CI/CD rules** (Docker, Podman, Jenkins)
+    - **100,200 - 100,250:** Reserved for **Web Application Security & CVE Exploits** (PHP2Shell, Apache, Nginx)
 - **200,000+:** Reserved for custom/local overrides and enterprise extensions.
 
 ### Out-of-the-Box Exceptions (> 100,000)
