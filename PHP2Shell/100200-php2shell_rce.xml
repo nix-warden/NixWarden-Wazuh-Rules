@@ -123,7 +123,8 @@
 
   <!-- Exploitation: PHP-FPM Pool Worker Crash (Signal 11 SIGSEGV or Signal 6 SIGABRT) -->
   <rule id="100213" level="10">
-    <match>child exited on signal 11|child exited on signal 6</match>
+    <if_sid>1</if_sid>
+    <match>exited on signal 11|exited on signal 6</match>
     <regex type="pcre2">\[pool \S+\] child \d+ exited on signal (?:11 \(SIGSEGV\)|6 \(SIGABRT\))</regex>
     <description>PHP2Shell exploitation: PHP-FPM worker crash (CVE-2026-109619 memory corruption)</description>
     <mitre>
