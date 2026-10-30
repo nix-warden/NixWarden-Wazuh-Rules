@@ -8,7 +8,7 @@
     - T1190 (Exploit Public-Facing Application)
     - T1499.003 (Endpoint Denial of Service: OS Exhaustion Flood)
     - T1505.003 (Server Software Component: Web Shell)
-    - T1071 (Application Layer Protocol: Web Protocols)
+    - T1071.001 (Application Layer Protocol: Web Protocols)
     - T1105 (Ingress Tool Transfer: curl/wget)
     - T1571 (Non-Standard Port: Reverse Shells)
     - T1059.004 (Command and Scripting Interpreter: Unix Shell)
@@ -18,17 +18,17 @@
     - kill_chain_reconnaissance (repeated memory probing / parameter tuning)
     - kill_chain_exploitation (heap exhaustion & active RCE trigger)
     - kill_chain_installation (webshell drop & persistence in web root)
-    - kill_chain_c2 (outbound reverse shell / network utility spawned by web user)
+    - kill_chain_c2 (outbound reverse shell or HTTP 200 web shell interaction)
     - kill_chain_actions_on_objectives (post-exploitation commands via auditd)
 
   Description:
   Hardened, multi-vector enterprise detection ruleset for PHP2Shell vulnerabilities.
   Strictly adheres to Lockheed Martin Cyber Kill Chain progression:
-  1. Delivery (L5): Single PHP memory / timeout crashes or HTTP 500 on PHP endpoints.
-  2. Reconnaissance (L8): Aggregated memory probing from the same source IP.
+  1. Delivery (L5): Single PHP memory / timeout crashes or HTTP 500/502/503/504 on PHP endpoints.
+  2. Reconnaissance (L8): Aggregated delivery anomalies from the same source IP.
   3. Exploitation (L12): High-frequency memory exhaustion confirming heap grooming.
   4. Installation (L10 -> L14): Web shell drops, escalating to Level 14 if preceded by exploitation.
-  5. Command and Control (L12 -> L14): Outbound reverse shells / C2 utilities (nc, socat, curl, wget).
+  5. Command and Control (L11-L12 -> L14): Outbound reverse shells (Auditd) or HTTP 200 web shell calls (Access Log).
   6. Actions on Objectives (L10 -> L14): Shell command execution, escalating to Level 14 if preceded by exploit/install/c2.
 
   Reference & Attribution:
@@ -66,11 +66,12 @@
     <group>kill_chain_delivery,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
-  <!-- Delivery: HTTP 500 Crash on PHP Endpoints -->
+  <!-- Delivery: Web Server Backend Crash on PHP Endpoints (500/502/503/504) -->
   <rule id="100205" level="5">
-    <if_sid>31122</if_sid>
-    <url>.php</url>
-    <description>Web server 500 Internal Error on PHP endpoint</description>
+    <if_sid>31120</if_sid>
+    <id>^500$|^502$|^503$|^504$</id>
+    <url type="pcre2">\.php(?:$|\?)</url>
+    <description>PHP2Shell delivery: Web server backend crash on PHP endpoint (500/502/503/504)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
@@ -139,7 +140,7 @@
   </rule>
 
   <!-- =================================================================== -->
-  <!-- Phase 5: Kill Chain - Command and Control (C2 / Reverse Shell)      -->
+  <!-- Phase 5: Kill Chain - Command and Control (C2: Host & Web Access)   -->
   <!-- Note: Placed above Phase 6 so analysisd links group kill_chain_c2.  -->
   <!-- =================================================================== -->
 
@@ -170,6 +171,34 @@
       <id>T1571</id>
     </mitre>
     <group>audit,post_exploitation,c2,kill_chain_c2,pci_dss_10.2.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_SC.7,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <!-- Standalone: Direct HTTP 200 Execution of PHP Script in Upload/Static Directory -->
+  <rule id="100211" level="11">
+    <if_sid>31100, 31108</if_sid>
+    <id>^200$</id>
+    <url type="pcre2">/(?:uploads?|wp-content/uploads|images?|media|tmp|cache)/.*?\.(?:php|phtml|phar)\b</url>
+    <description>PHP2Shell C2: Direct HTTP 200 execution of script in upload or static directory</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1071.001</id>
+      <id>T1190</id>
+    </mitre>
+    <group>web,accesslog,c2,webshell,kill_chain_c2,pci_dss_6.5,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <!-- Chained Escalation: HTTP 200 web shell interaction following exploitation or drop -->
+  <rule id="100212" level="14">
+    <if_sid>100211</if_sid>
+    <if_matched_group>kill_chain_exploitation,kill_chain_installation</if_matched_group>
+    <timeframe>600</timeframe>
+    <description>PHP2Shell confirmed C2: HTTP 200 interaction with web shell following exploitation or file drop</description>
+    <mitre>
+      <id>T1505.003</id>
+      <id>T1071.001</id>
+      <id>T1190</id>
+    </mitre>
+    <group>web,accesslog,c2,webshell,kill_chain_c2,pci_dss_6.5,pci_dss_10.2.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <!-- =================================================================== -->

@@ -43,11 +43,13 @@ NixWarden bridges all major web server stacks natively through Wazuh's built-in 
 ```
 
 ### Telemetry Vectors & Kill Chain Progression:
-1. **Phase 1: Delivery (Web Error & Access Logs):** Catches single OOM (`100200`), timeout (`100201`), and HTTP 500 crashes (`100205`) via parent `31420` / `31122`. Triage level (Level 5).
+1. **Phase 1: Delivery (Web Error & Access Logs):** Catches single OOM (`100200`), timeout (`100201`), and HTTP 500/502/503/504 backend crashes (`100205`) via parent `31420` / `31120`. Triage level (Level 5).
 2. **Phase 2: Reconnaissance & Probing:** Correlates repeated delivery anomalies (3 events in 60s from same IP) into early warning probing alert (`100204`, Level 8).
 3. **Phase 3: Exploitation (Memory Corruption):** Correlates high-frequency heap exhaustion (5 OOM events in 120s) into active RCE alert (`100202`, Level 12).
 4. **Phase 4: Installation (File Integrity Monitoring):** Standalone web shell detection (`100206`, Level 10), escalating to Level 14 (`100207`) if preceded by active exploitation.
-5. **Phase 5: Command and Control (Host Audit Telemetry):** Outbound reverse shell / network utility execution under web user (`100209`, Level 12), escalating to Level 14 (`100210`) if preceded by exploit or webshell drop.
+5. **Phase 5: Command and Control (Host Audit & Web Access):** 
+   - *Host Telemetry:* Outbound reverse shell / network utility execution under web user (`100209`, Level 12), escalating to Level 14 (`100210`).
+   - *Web Telemetry:* Direct HTTP 200 interaction with PHP scripts in upload/static directories (`100211`, Level 11), escalating to Level 14 (`100212`) if preceded by exploit or file drop.
 6. **Phase 6: Actions on Objectives (Host Audit Telemetry):** Standalone command execution under web user (`100203`, Level 10), escalating to Level 14 (`100208`) if preceded by exploit, webshell drop, or C2 channel.
 
 ---
@@ -60,13 +62,15 @@ All rules are assigned to the **NixWarden Web Application Security namespace (`1
 |---|---|---|---|---|---|
 | `100200` | 5 | Error Log / Delivery | Single PHP memory exhaustion fatal error (`Allowed memory size...`) | `kill_chain_delivery` | T1190<br>T1499.003 |
 | `100201` | 5 | Error Log / Delivery | Single PHP execution timeout fatal error (`Maximum execution time...`) | `kill_chain_delivery` | T1190 |
-| `100205` | 5 | Access Log / Delivery | HTTP 500 Internal Error on `.php` endpoint (engine crash / 500 spike) | `kill_chain_delivery` | T1190 |
+| `100205` | 5 | Access Log / Delivery | Web server backend crash (500/502/503/504) on `.php` endpoint | `kill_chain_delivery` | T1190 |
 | `100204` | 8 | Error Log / Reconnaissance | Repeated delivery anomalies (3 events in 60s from same IP) | `kill_chain_reconnaissance` | T1595.002<br>T1190 |
 | `100202` | 12 | Error Log / Exploitation | High-frequency memory exhaustion (5 events in 120s). Active RCE exploit attempt. | `kill_chain_exploitation` | T1190<br>T1499.003 |
 | `100206` | 10 | FIM / Installation | Suspicious executable script created or modified in web directory | `kill_chain_installation` | T1505.003 |
 | `100207` | 14 | FIM / Chained Escalation | Web shell created or modified following active exploitation (`timeframe: 600s`) | `kill_chain_installation` | T1505.003<br>T1190 |
 | `100209` | 12 | Auditd / Command & Control | Network communication or reverse shell tool spawned by web server user (`nc`, `socat`, `curl`) | `kill_chain_c2` | T1071<br>T1105<br>T1571 |
 | `100210` | 14 | Auditd / Chained Escalation | Reverse shell or network utility spawned following exploitation or webshell drop (`timeframe: 600s`) | `kill_chain_c2` | T1071<br>T1105<br>T1190<br>T1571 |
+| `100211` | 11 | Access Log / Command & Control | Direct HTTP 200 execution of PHP script located in upload or static directory | `kill_chain_c2` | T1505.003<br>T1071.001<br>T1190 |
+| `100212` | 14 | Access Log / Chained Escalation | HTTP 200 interaction with web shell following exploitation or file drop (`timeframe: 600s`) | `kill_chain_c2` | T1505.003<br>T1071.001<br>T1190 |
 | `100203` | 10 | Auditd / Actions on Objectives | Command execution spawned under web server user (`www-data`/`apache`/`nginx`) | `kill_chain_actions_on_objectives` | T1059.004 |
 | `100208` | 14 | Auditd / Chained Escalation | Shell command spawned by web server user following exploitation, webshell drop, or C2 (`timeframe: 600s`) | `kill_chain_actions_on_objectives` | T1059.004<br>T1190 |
 
@@ -159,11 +163,11 @@ Oct 30 18:22:15 webserver php-fpm[1234]: PHP Fatal error: Allowed memory size of
 ```
 * **Evaluation Chain:** `31405` (`^PHP Fatal error:`) $\to$ `31420` $\to$ **`100200` (Level 5)**.
 
-### Test 4: Web Access Log 500 Crash (Rule 100205)
+### Test 4: Web Access Log Backend Crash (502/500) (Rule 100205)
 ```text
-198.51.100.25 - - [30/Oct/2026:18:22:15 +0000] "POST /upload.php HTTP/1.1" 500 0 "-" "curl/7.88.1"
+198.51.100.25 - - [30/Oct/2026:18:22:15 +0000] "POST /upload.php HTTP/1.1" 502 0 "-" "curl/7.88.1"
 ```
-* **Evaluation Chain:** `31100` (Web log) $\to$ `31120` (5xx) $\to$ `31122` (500 Internal Error) $\to$ **`100205` (Level 5)**.
+* **Evaluation Chain:** `31100` (Web log) $\to$ `31120` (5xx Server error) $\to$ **`100205` (Level 5)**.
 
 ### Test 5: Post-Exploitation Shell via Auditd (Rule 100203)
 ```text
@@ -182,6 +186,12 @@ File '/var/www/html/shell.php' added to the system. Mode: file. Size: 1234 bytes
 type=SYSCALL msg=audit(1761849735.123:457): arch=c000003e syscall=59 success=yes exit=0 a0=55a12b a1=55a180 a2=55a190 a3=0 items=2 ppid=1234 pid=5679 auid=4294967295 uid=33 gid=33 euid=33 suid=33 fsuid=33 egid=33 sgid=33 fsgid=33 tty=(none) ses=4294967295 comm="nc" exe="/usr/bin/nc" key="audit-wazuh-c"
 ```
 * **Evaluation Chain:** `80792` (Audit command) $\to$ **`100209` (Level 12)**. If preceded by `100202` or `100206`, escalates to **`100210` (Level 14)**.
+
+### Test 8: Direct HTTP 200 Web Shell Interaction (Rule 100211)
+```text
+198.51.100.25 - - [30/Oct/2026:18:25:00 +0000] "POST /wp-content/uploads/2026/10/cache.php?cmd=id HTTP/1.1" 200 45 "-" "curl/7.88.1"
+```
+* **Evaluation Chain:** `31100` (Web log) $\to$ `31108` (2xx/3xx simple request) $\to$ **`100211` (Level 11)**. If preceded by `100202` or `100206`, escalates to **`100212` (Level 14)**.
 
 ---
 
