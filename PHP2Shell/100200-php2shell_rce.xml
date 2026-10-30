@@ -2,68 +2,131 @@
   NixWarden - Wazuh Ruleset
   Category: Web Application Security / CVE & Exploit Detections
   Vulnerability: PHP2Shell (CVE-2026-109618, CVE-2026-109619)
+  
   MITRE ATT&CK: 
+    - T1595.002 (Active Scanning: Vulnerability Scanning)
     - T1190 (Exploit Public-Facing Application)
     - T1499.003 (Endpoint Denial of Service: OS Exhaustion Flood)
     - T1059.004 (Command and Scripting Interpreter: Unix Shell)
+    - T1505.003 (Server Software Component: Web Shell)
   
-  Description:
-  PHP2Shell represents critical unauthenticated remote code execution (RCE) flaws 
-  in core PHP runtime memory management. Attackers exploit out-of-memory (OOM) 
-  error handling via longjmp() and stale global states by issuing crafted multipart 
-  requests to exhaust PHP's memory_limit. This rule set detects precursor memory 
-  exhaustion events, correlation of repeated probing from the same source IP, 
-  and potential post-exploitation child process execution under web server user contexts.
+  Cyber Kill Chain:
+    - kill_chain_reconnaissance (active probing)
+    - kill_chain_delivery (malicious multipart payloads)
+    - kill_chain_exploitation (OOM memory corruption via longjmp)
+    - kill_chain_installation (webshell persistence in web root)
+    - kill_chain_actions_on_objectives (post-exploitation commands via auditd)
 
-  Reference:
+  Description:
+  Hardened, multi-vector enterprise detection ruleset for PHP2Shell vulnerabilities.
+  Features native cross-platform inheritance from Wazuh's built-in PHP error gateway 
+  (Rule 31420), supporting Nginx (31301), Apache (30101), and standalone PHP-FPM (31405).
+  Includes precursor triage logging, staged attack correlation, access log 500 error 
+  correlation, Linux auditd process tracking, and FIM web shell detection.
+
+  Reference & Attribution:
+  Based on the foundational research and baseline logic published by Wazuh:
   https://wazuh.com/blog/detecting-php2shell-remote-code-execution-with-wazuh/
 -->
-<group name="php2shell,apache,web,appsec,attack,">
+<group name="php2shell,web,appsec,attack,">
 
-  <!-- Precursor: Single PHP Memory Exhaustion Fatal Error -->
-  <rule id="100200" level="7">
-    <if_sid>30301</if_sid>
-    <regex type="pcre2">PHP Fatal error:\s+Allowed memory size of \d+ bytes exhausted</regex>
-    <description>PHP2Shell precursor: PHP memory exhaustion fatal error for a request from $(srcip)</description>
+  <!-- =================================================================== -->
+  <!-- Vector 1: Web Error Logs - Exploit Precursors & Probing (0265-php)   -->
+  <!-- =================================================================== -->
+
+  <!-- Precursor: Single PHP Memory Exhaustion Fatal Error (Triage Level) -->
+  <rule id="100200" level="5">
+    <if_sid>31420</if_sid>
+    <match>Allowed memory size of </match>
+    <regex type="pcre2">Allowed memory size of \d+ bytes exhausted</regex>
+    <description>PHP2Shell precursor: PHP memory exhaustion fatal error for request from $(srcip)</description>
     <mitre>
       <id>T1190</id>
       <id>T1499.003</id>
     </mitre>
-    <group>web,appsec,attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>web,appsec,attack,kill_chain_delivery,kill_chain_exploitation,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <!-- Precursor: PHP Maximum Execution Time Exceeded -->
-  <rule id="100201" level="7">
-    <if_sid>30301</if_sid>
-    <regex type="pcre2">PHP Fatal error:\s+Maximum execution time of \d+ seconds? exceeded</regex>
-    <description>PHP2Shell precursor: PHP maximum execution time exceeded for a request from $(srcip)</description>
+  <!-- Precursor: PHP Maximum Execution Time Exceeded (Triage Level) -->
+  <rule id="100201" level="5">
+    <if_sid>31420</if_sid>
+    <match>Maximum execution time of </match>
+    <regex type="pcre2">Maximum execution time of \d+ seconds? exceeded</regex>
+    <description>PHP2Shell precursor: PHP maximum execution time exceeded for request from $(srcip)</description>
     <mitre>
       <id>T1190</id>
     </mitre>
-    <group>web,appsec,attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>web,appsec,attack,kill_chain_delivery,kill_chain_exploitation,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <!-- Attack Correlation: Repeated PHP Memory Exhaustion from Same Source IP -->
+  <!-- Early Warning: Repeated Memory Exhaustion Probing (3 events in 60s) -->
+  <rule id="100204" level="8" frequency="3" timeframe="60">
+    <if_matched_sid>100200</if_matched_sid>
+    <same_source_ip />
+    <description>PHP2Shell probing: Repeated PHP memory exhaustion errors from $(srcip). Early exploitation warning.</description>
+    <mitre>
+      <id>T1595.002</id>
+      <id>T1190</id>
+    </mitre>
+    <group>web,appsec,attack,kill_chain_reconnaissance,kill_chain_delivery,pci_dss_6.5,pci_dss_11.4,</group>
+  </rule>
+
+  <!-- Attack Correlation: High-Frequency Memory Exhaustion (5 events in 120s) -->
   <rule id="100202" level="12" frequency="5" timeframe="120">
     <if_matched_sid>100200</if_matched_sid>
     <same_source_ip />
-    <description>PHP2Shell: Multiple PHP memory exhaustion errors for requests from $(srcip). Potential RCE exploitation attempt (CVE-2026-109618/CVE-2026-109619)</description>
+    <description>PHP2Shell: High-frequency PHP memory exhaustion from $(srcip). Active RCE exploitation attempt (CVE-2026-109618/CVE-2026-109619)</description>
     <mitre>
       <id>T1190</id>
       <id>T1499.003</id>
     </mitre>
-    <group>web,appsec,attack,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    <group>web,appsec,attack,kill_chain_exploitation,pci_dss_6.5,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <!-- Post-Exploitation: Command Execution Spawned by Web Server User via Auditd -->
+  <!-- =================================================================== -->
+  <!-- Vector 2: Web Access Logs - Server 500 Crash Correlation (0245-web) -->
+  <!-- =================================================================== -->
+
+  <!-- HTTP 500 Crash on PHP Endpoints -->
+  <rule id="100205" level="5">
+    <if_sid>31122</if_sid>
+    <url>.php</url>
+    <description>Web server 500 Internal Error on PHP endpoint ($(url)) from $(srcip) - potential PHP engine crash</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>web,accesslog,system_error,kill_chain_exploitation,</group>
+  </rule>
+
+  <!-- =================================================================== -->
+  <!-- Vector 3: Host Telemetry - Linux Auditd Command Execution           -->
+  <!-- =================================================================== -->
+
+  <!-- Post-Exploitation: Command/Shell Spawned by Web Server Service User -->
   <rule id="100203" level="10">
     <if_sid>80792</if_sid>
-    <field name="audit.euid">^33$|^48$|^www-data$|^apache$|^nginx$</field>
+    <field name="audit.euid">^33$|^48$|^82$|^www-data$|^apache$|^nginx$|^nobody$</field>
     <description>PHP2Shell post-exploitation: Shell command executed by web server user ($(audit.euid)): $(audit.command)</description>
     <mitre>
       <id>T1059.004</id>
     </mitre>
-    <group>audit,post_exploitation,rce,pci_dss_10.2.2,</group>
+    <group>audit,post_exploitation,rce,kill_chain_actions_on_objectives,pci_dss_10.2.2,</group>
+  </rule>
+
+  <!-- =================================================================== -->
+  <!-- Vector 4: File Integrity Monitoring (FIM / Syscheck)                -->
+  <!-- =================================================================== -->
+
+  <!-- Post-Exploitation: New Executable Script Dropped in Web Root        -->
+  <rule id="100206" level="10">
+    <if_sid>554</if_sid>
+    <match>/var/www</match>
+    <regex type="pcre2">\.(?:php|phtml|phar|so)$</regex>
+    <description>PHP2Shell post-exploitation: Suspicious executable script created in web directory: $(file)</description>
+    <mitre>
+      <id>T1505.003</id>
+    </mitre>
+    <group>syscheck,post_exploitation,webshell,kill_chain_installation,pci_dss_11.5,</group>
   </rule>
 
 </group>
