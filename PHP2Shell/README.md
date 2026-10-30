@@ -45,7 +45,7 @@ NixWarden bridges all major web server stacks natively through Wazuh's built-in 
 ### Telemetry Vectors & Kill Chain Progression:
 1. **Phase 1: Delivery (Web Error & Access Logs):** Catches single OOM (`100200`), timeout (`100201`), and HTTP 500/502/503/504 backend crashes (`100205`) via parent `31420` / `31120`. Triage level (Level 5).
 2. **Phase 2: Reconnaissance & Probing:** Correlates repeated delivery anomalies (3 events in 60s from same IP) into early warning probing alert (`100204`, Level 8).
-3. **Phase 3: Exploitation (Memory Corruption):** Correlates high-frequency heap exhaustion (5 OOM events in 120s) into active RCE alert (`100202`, Level 12).
+3. **Phase 3: Exploitation (Memory Corruption):** Correlates high-frequency heap exhaustion (5 OOM events in 120s, `100202`, Level 12) or PHP-FPM worker segmentation faults / aborts (`100213`, Level 10) confirming active memory corruption (CVE-2026-109618 / CVE-2026-109619).
 4. **Phase 4: Installation (File Integrity Monitoring):** Standalone web shell detection (`100206`, Level 10), escalating to Level 14 (`100207`) if preceded by active exploitation.
 5. **Phase 5: Command and Control (Host Audit & Web Access):** 
    - *Host Telemetry:* Outbound reverse shell / network utility execution under web user (`100209`, Level 12), escalating to Level 14 (`100210`).
@@ -65,6 +65,7 @@ All rules are assigned to the **NixWarden Web Application Security namespace (`1
 | `100205` | 5 | Access Log / Delivery | Web server backend crash (500/502/503/504) on `.php` endpoint | `kill_chain_delivery` | T1190 |
 | `100204` | 8 | Error Log / Reconnaissance | Repeated delivery anomalies (3 events in 60s from same IP) | `kill_chain_reconnaissance` | T1595.002<br>T1190 |
 | `100202` | 12 | Error Log / Exploitation | High-frequency memory exhaustion (5 events in 120s). Active RCE exploit attempt. | `kill_chain_exploitation` | T1190<br>T1499.003 |
+| `100213` | 10 | Error Log / Exploitation | PHP-FPM worker segmentation fault or abort (CVE-2026-109619) | `kill_chain_exploitation` | T1190<br>T1499.003 |
 | `100206` | 10 | FIM / Installation | Suspicious executable script created or modified in web directory | `kill_chain_installation` | T1505.003 |
 | `100207` | 14 | FIM / Chained Escalation | Web shell created or modified following active exploitation (`timeframe: 600s`) | `kill_chain_installation` | T1505.003<br>T1190 |
 | `100209` | 12 | Auditd / Command & Control | Network communication or reverse shell tool spawned by web server user (`nc`, `socat`, `curl`) | `kill_chain_c2` | T1071<br>T1105<br>T1571 |
@@ -92,11 +93,30 @@ LogFormat "%a %l %u %t \"%r\" %>s %O \"%{Referer}i\" \"%{User-Agent}i\"" combine
 ### Nginx Configuration (`ngx_http_realip_module`):
 Add to your `http` or `server` block in `/etc/nginx/nginx.conf`:
 ```nginx
+# Standard Internal Subnets & Private Ranges
 set_real_ip_from 10.0.0.0/8;
 set_real_ip_from 172.16.0.0/12;
 set_real_ip_from 192.168.0.0/16;
 real_ip_header X-Forwarded-For;
 real_ip_recursive on;
+
+# If behind Cloudflare, use CF-Connecting-IP with Cloudflare IP ranges:
+# set_real_ip_from 173.245.48.0/20;
+# set_real_ip_from 103.21.244.0/22;
+# set_real_ip_from 103.22.200.0/22;
+# set_real_ip_from 103.31.4.0/22;
+# set_real_ip_from 141.101.64.0/18;
+# set_real_ip_from 108.162.192.0/18;
+# set_real_ip_from 190.93.240.0/20;
+# set_real_ip_from 188.114.96.0/20;
+# set_real_ip_from 197.234.240.0/22;
+# set_real_ip_from 198.41.128.0/17;
+# set_real_ip_from 162.158.0.0/15;
+# set_real_ip_from 104.16.0.0/13;
+# set_real_ip_from 104.24.0.0/14;
+# set_real_ip_from 172.64.0.0/13;
+# set_real_ip_from 131.0.72.0/22;
+# real_ip_header CF-Connecting-IP;
 ```
 
 ---
@@ -191,7 +211,33 @@ type=SYSCALL msg=audit(1761849735.123:457): arch=c000003e syscall=59 success=yes
 ```text
 198.51.100.25 - - [30/Oct/2026:18:25:00 +0000] "POST /wp-content/uploads/2026/10/cache.php?cmd=id HTTP/1.1" 200 45 "-" "curl/7.88.1"
 ```
-* **Evaluation Chain:** `31100` (Web log) $\to$ `31108` (2xx/3xx simple request) $\to$ **`100211` (Level 11)**. If preceded by `100202` or `100206`, escalates to **`100212` (Level 14)**.
+* **Evaluation Chain:** `31100` (Web log) $\to$ `31108` (2xx/3xx simple request) $\to$ **`100211` (Level 11)**. If preceded by `100202`, `100213`, or `100206`, escalates to **`100212` (Level 14)**.
+
+### Test 9: PHP-FPM Worker Segfault Crash (CVE-2026-109619) (Rule 100213)
+```text
+Oct 30 18:22:15 webserver php-fpm[1234]: [pool www] child 5678 exited on signal 11 (SIGSEGV) after 12.345678 seconds from start
+```
+* **Evaluation Chain:** **`100213` (Level 10)**. If followed by webshell upload (`100206`) or shell execution (`100203`), escalates to **Level 14**.
+
+---
+
+## ⚙️ False Positive Tuning (Auditd Exclusions)
+
+If your web application legitimately invokes system utilities (e.g. ImageMagick `/usr/bin/convert`, `sendmail`, or PDF generators) from `www-data`, create a local exclusion rule in `/var/ossec/etc/rules/local_rules.xml`:
+
+```xml
+<group name="audit,">
+  <!-- Suppress standalone alerts for legitimate web application helper binaries -->
+  <rule id="100299" level="0">
+    <if_sid>100203</if_sid>
+    <field name="audit.exe" type="pcre2">/(?:convert|identify|sendmail|wkhtmltopdf)\z</field>
+    <description>Ignore legitimate web helper utilities spawned by web server user</description>
+  </rule>
+</group>
+```
+
+> [!NOTE]
+> Because chained escalation rule `100208` requires prior exploitation (`kill_chain_exploitation`), routine background execution of these helper binaries during normal business traffic will never trigger high-severity compromise alerts.
 
 ---
 

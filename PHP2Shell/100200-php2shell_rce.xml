@@ -110,6 +110,18 @@
     <group>kill_chain_exploitation,pci_dss_6.5.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.5,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
+  <!-- Exploitation: PHP-FPM Worker SIGSEGV / SIGABRT Crash (CVE-2026-109619) -->
+  <rule id="100213" level="10">
+    <match>child exited on signal 11 (SIGSEGV)|child exited on signal 6 (SIGABRT)</match>
+    <regex type="pcre2">\[pool \S+\] child \d+ exited on signal (?:11 \(SIGSEGV\)|6 \(SIGABRT\))</regex>
+    <description>PHP2Shell exploitation: PHP-FPM worker segfault or abort (CVE-2026-109619 memory corruption)</description>
+    <mitre>
+      <id>T1190</id>
+      <id>T1499.003</id>
+    </mitre>
+    <group>kill_chain_exploitation,pci_dss_6.5.2,pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_32.2,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_SC.5,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.6,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
   <!-- =================================================================== -->
   <!-- Phase 4: Kill Chain - Installation (FIM / Syscheck)                 -->
   <!-- Note: Placed above Phase 5 & 6 so analysisd links history groups.   -->
@@ -118,7 +130,7 @@
   <!-- Standalone: New Executable Script Dropped or Modified in Web Root -->
   <rule id="100206" level="10">
     <if_sid>554, 550</if_sid>
-    <field name="file" type="pcre2">^/var/www/.*?\.(?:php|phtml|phar|so)\z</field>
+    <field name="file" type="pcre2">(?:^/(?:var/www|usr/share/nginx/html|srv/www|srv/http|tmp|dev/shm)/.*?\.(?:php[0-9]?|phtml|phar|so|inc))\z</field>
     <description>PHP2Shell post-exploitation: Suspicious executable script created or modified in web directory</description>
     <mitre>
       <id>T1505.003</id>
