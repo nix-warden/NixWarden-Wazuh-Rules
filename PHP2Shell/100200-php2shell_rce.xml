@@ -34,6 +34,12 @@
   Reference & Attribution:
   Based on foundational research and baseline logic published by Wazuh:
   https://wazuh.com/blog/detecting-php2shell-remote-code-execution-with-wazuh/
+
+  Environment Adaptation Note:
+  This ruleset is built strictly upon vanilla/default Wazuh decoders and parent
+  rule IDs (Syslog 1, Kernel 1010, Web 31100/31120, PHP 31420, Audit 80792, FIM 550/554).
+  If your deployment uses custom rule namespaces, custom log formats (JSON/forwarders),
+  or non-standard web roots/UIDs, adapt rule IDs and <if_sid> references accordingly.
 -->
 <group name="php2shell,web,appsec,attack,">
 

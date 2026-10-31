@@ -52,6 +52,15 @@ NixWarden bridges all major web server stacks natively through Wazuh's built-in 
    - *Web Telemetry:* Direct HTTP 200 interaction with PHP scripts in upload/static directories (`100211`, Level 11), escalating to Level 14 (`100212`) if preceded by exploit or file drop.
 6. **Phase 6: Actions on Objectives (Host Audit Telemetry):** Standalone command execution under web user (`100203`, Level 10), escalating to Level 14 (`100208`) if preceded by exploit, webshell drop, or C2 channel.
 
+> [!WARNING]
+> ### ⚠️ Baseline Assumption & Environment Adaptation
+> This ruleset is strictly calibrated against **standard, out-of-the-box (vanilla)** Wazuh decoders, stock rule hierarchies, and default log formats (standard Nginx/Apache error and combined access logs, default Linux Syslog, standard Auditd schemas).
+>
+> If your production environment uses custom adaptations, you must adjust these definitions to match your specific deployment:
+> 1. **Rule ID Allocation & Parent Hierarchy:** If your environment already occupies the `100200–100250` namespace, remap the `<rule id="...">` values. If your SIEM utilizes custom parent rules instead of stock Wazuh defaults (`1` for Syslog, `1010` for kernel segfaults, `31100`/`31120` for web access, `31420` for PHP fatal errors, `80792` for audit commands, `550`/`554` for FIM), update the corresponding `<if_sid>` references.
+> 2. **Custom & JSON Log Formats:** If your web servers emit JSON logs or custom log formats (e.g. custom Nginx `log_format`), or if logs pass through intermediate shippers (Fluentd, Vector, Logstash) that alter Syslog headers or strip `program_name`, pre-decoded fields (`program_name`, `url`, `id`) and decoder bindings will differ. Ensure rules point to your custom decoder fields.
+> 3. **Non-Standard Service Users & Document Roots:** If PHP-FPM pools execute under dedicated service accounts (e.g. `cpanel`, `webadmin`, or custom UIDs $\ge 1000$) or serve web applications from non-standard roots (e.g. `/opt/app`, `/home/site`), adapt the `audit.euid` regex in rules `100203` and `100209`, and the directory path pattern in rule `100206`.
+
 ---
 
 ## 📋 Rule Catalog
