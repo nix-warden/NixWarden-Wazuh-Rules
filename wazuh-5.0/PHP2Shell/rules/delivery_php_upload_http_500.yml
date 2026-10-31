@@ -1,0 +1,32 @@
+title: PHP2Shell Delivery - HTTP 500/503 Server Error on PHP or Upload Endpoints
+id: 7f9c05d4-0bf7-4b7f-a16c-ceb3b8f11c23
+status: experimental
+description: |
+    Detects HTTP 500 (Internal Server Error) or 503 (Service Unavailable) status codes occurring
+    specifically on PHP execution scripts or API upload endpoints targeted by PHP2Shell payloads.
+references:
+    - https://wazuh.com/blog/detecting-php2shell-remote-code-execution-with-wazuh/
+    - https://nvd.nist.gov/vuln/detail/CVE-2026-109618
+    - https://nvd.nist.gov/vuln/detail/CVE-2026-109619
+author: NixWarden / Wazuh Ruleset
+date: 2026/10/31
+modified: 2026/10/31
+tags:
+    - attack.initial_access
+    - attack.t1190
+    - ckc.delivery
+    - php2shell
+logsource:
+    category: webserver
+detection:
+    selection_status:
+        http.response.status_code:
+            - 500
+            - 503
+    selection_path:
+        url.path|re: '(?i)(?:\.(?:php[0-9]?|phtml)\b|/(?:api|wp-json|graphql|rest|upload|media)/)\b'
+    condition: selection_status and selection_path
+falsepositives:
+    - Legitimate application unhandled exceptions, database connection dropouts, or backend API maintenance.
+level: low
+

@@ -1,0 +1,49 @@
+title: PHP2Shell Actions on Objectives - Command Shell Spawned by Web User
+id: 5d155b03-67e9-4f18-8d43-bd95d26eb3b1
+status: experimental
+description: |
+    Detects command shell interpreters (sh, bash, dash, zsh, python, perl) executed directly
+    under web server user accounts (UID 33, 48, 82, www-data, apache, nginx), indicating arbitrary code execution.
+references:
+    - https://wazuh.com/blog/detecting-php2shell-remote-code-execution-with-wazuh/
+    - https://nvd.nist.gov/vuln/detail/CVE-2026-109618
+    - https://nvd.nist.gov/vuln/detail/CVE-2026-109619
+author: NixWarden / Wazuh Ruleset
+date: 2026/10/31
+modified: 2026/10/31
+tags:
+    - attack.execution
+    - attack.t1059.004
+    - ckc.actions_on_objectives
+    - php2shell
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection_user_id:
+        user.effective.id:
+            - 33
+            - 48
+            - 82
+    selection_user_name:
+        user.effective.name:
+            - 'www-data'
+            - 'apache'
+            - 'nginx'
+            - 'nobody'
+    selection_binary:
+        process.executable|endswith:
+            - '/sh'
+            - '/bash'
+            - '/dash'
+            - '/zsh'
+            - '/ash'
+            - '/python'
+            - '/python3'
+            - '/perl'
+            - '/ruby'
+    condition: (selection_user_id or selection_user_name) and selection_binary
+falsepositives:
+    - Legitimate PHP scripts executing shell commands via shell_exec(), exec(), or system() for local administrative tasks (e.g. backup scripts).
+level: high
+

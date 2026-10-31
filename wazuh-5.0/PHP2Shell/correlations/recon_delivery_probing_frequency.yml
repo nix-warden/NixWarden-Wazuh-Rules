@@ -1,0 +1,35 @@
+title: PHP2Shell Probing - Repeated Delivery Anomalies From Same IP
+id: 68012961-ae78-4c8e-b0b1-27b28e7a2d08
+status: experimental
+description: |
+    Correlates repeated delivery-phase anomalies (PHP memory exhaustion, timeout, 502/504 gateway errors, or 500 crashes)
+    originating from the same source IP address within 60 seconds (3 or more occurrences), indicating systematic heap grooming or fuzzing.
+references:
+    - https://wazuh.com/blog/detecting-php2shell-remote-code-execution-with-wazuh/
+    - https://nvd.nist.gov/vuln/detail/CVE-2026-109618
+    - https://nvd.nist.gov/vuln/detail/CVE-2026-109619
+author: NixWarden / Wazuh Ruleset
+date: 2026/10/31
+modified: 2026/10/31
+tags:
+    - attack.initial_access
+    - attack.t1595.002
+    - attack.t1190
+    - ckc.reconnaissance
+    - php2shell
+correlation:
+    type: event_count
+    rules:
+        - 91414b3d-eded-46e7-abe2-edaba1580b7c # delivery_php_memory_exhaustion
+        - 7df01780-4672-4c37-b16f-58cedc6026aa # delivery_php_timeout
+        - d95b7dc1-c690-4404-940f-c615ee6cef52 # delivery_fastcgi_backend_crash
+        - 7f9c05d4-0bf7-4b7f-a16c-ceb3b8f11c23 # delivery_php_upload_http_500
+    group-by:
+        - source.ip
+    timespan: 60s
+    condition:
+        gte: 3
+falsepositives:
+    - Web crawler index storms hitting broken PHP scripts, aggressive load testing suites.
+level: medium
+

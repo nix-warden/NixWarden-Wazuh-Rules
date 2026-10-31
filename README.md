@@ -37,8 +37,10 @@ Wazuh strictly mandates unique Rule IDs across the entire manager instance. If d
 _Before deploying, always check your `/var/ossec/etc/rules/` directory to ensure no local collisions exist._
 ## 🚀 Key Features
 
-- **MITRE ATT&CK Mapping:** Every rule includes `<mitre>` tags for consistent threat hunting.
-    
+- **Dual-Engine Architecture (Wazuh 4.x & 5.0):**
+    - **Wazuh 4.x:** Native OSSEC XML rulesets (`PHP2Shell/`, `0245-web_rules.xml`, etc.) built on strict ID namespaces and standard decoders.
+    - **Wazuh 5.0 (RC):** Next-generation **Sigma YAML** rules and **Sigma Correlation Detectors** residing in `wazuh-5.0/`, mapped natively to the **Wazuh Common Schema (WCS)**.
+- **MITRE ATT&CK & Cyber Kill Chain Mapping:** Every rule includes `<mitre>` or `attack.*` and `ckc.*` tags for end-to-end kill chain tracking.
 - **Clean Room Design:** We don't blindly copy-paste; we adapt logic to ensure performance optimization for high-load environments.
     
 

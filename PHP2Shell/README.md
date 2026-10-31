@@ -2,6 +2,11 @@
 
 **NixWarden Golden Ruleset** for detecting, correlating, and hunting exploitation of the critical PHP runtime memory corruption vulnerabilities (**PHP2Shell**) using the **Wazuh SIEM/XDR** platform.
 
+> [!TIP]
+> **Wazuh 5.0 (RC) Support Available:**
+> Looking for the modern **Sigma YAML** and **Wazuh Common Schema (WCS)** implementation for Wazuh 5.0?
+> See the dedicated [Wazuh 5.0 PHP2Shell Ruleset](../wazuh-5.0/PHP2Shell/README.md).
+
 > [!NOTE]
 > **Source Attribution:** Based on foundational research and baseline detection logic published by Wazuh:  
 > [Detecting PHP2Shell remote code execution with Wazuh](https://wazuh.com/blog/detecting-php2shell-remote-code-execution-with-wazuh/).  
