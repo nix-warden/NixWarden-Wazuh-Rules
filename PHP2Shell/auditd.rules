@@ -11,13 +11,13 @@
 #
 
 # Debian / Ubuntu (www-data UID 33)
--a always,exit -F arch=b64 -S execve -F euid=33 -k audit-wazuh-c
--a always,exit -F arch=b32 -S execve -F euid=33 -k audit-wazuh-c
+-a always,exit -F arch=b64 -S execve,execveat -F euid=33 -k audit-wazuh-c
+-a always,exit -F arch=b32 -S execve,execveat -F euid=33 -k audit-wazuh-c
 
 # RHEL / CentOS / Rocky / Alma (apache UID 48)
--a always,exit -F arch=b64 -S execve -F euid=48 -k audit-wazuh-c
--a always,exit -F arch=b32 -S execve -F euid=48 -k audit-wazuh-c
+-a always,exit -F arch=b64 -S execve,execveat -F euid=48 -k audit-wazuh-c
+-a always,exit -F arch=b32 -S execve,execveat -F euid=48 -k audit-wazuh-c
 
 # Alpine Linux (nobody/www-data UID 82)
--a always,exit -F arch=b64 -S execve -F euid=82 -k audit-wazuh-c
--a always,exit -F arch=b32 -S execve -F euid=82 -k audit-wazuh-c
+-a always,exit -F arch=b64 -S execve,execveat -F euid=82 -k audit-wazuh-c
+-a always,exit -F arch=b32 -S execve,execveat -F euid=82 -k audit-wazuh-c
